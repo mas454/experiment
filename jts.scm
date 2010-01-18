@@ -1,10 +1,10 @@
 ;(class Test (public) 
  ; (def (main args) ((public static void) (array String))
   ;     (System.out.println "Hello Java World")))
-(define (begin_compile code-list)
+(define (begin-compile code-list)
 	 (apply concat 
 		(map (lambda (a)
-		       (compile a #f)) code_list)))
+		       (compile a #f)) code-list)))
 (define (bool? code)
   (or (true? code)
       (false? code)))
@@ -32,7 +32,7 @@
 		     "true"
 		     "false"))
 		("'" (string code) "'")))
-(define (tagged_list? exp tag)
+(define (tagged-list? exp tag)
   (if (pair? exp)
       (eq? (car exp) tag)
       #f))
@@ -57,9 +57,9 @@
      (compile arg2 argp)))
 
 (define (jasm? exp)
-     (tagged_list? exp 'rasm))
+     (tagged-list? exp 'rasm))
 (define (set? exp)
-  (tagged_list? exp '=))
+  (tagged-list? exp '=))
 (define sym2str symbol->string)
 (define (run? code)
   (and (pair? code) (symbol? (car code))))
@@ -72,9 +72,29 @@
 			 (concat ", " (compile arg #t))) (cddr code)))
 	  ")" (argp_str argp)))
 
+(define (val-mac? code)
+  (tagged-list? code 'val-mac))
 
 (define (cond? code)
-  (cond-compile (cdr code)))
+  (tagged-list? code 'cond))
+(define (cond-compile code)
+  (concat "if(" (compile (caar code) #t) ") {\n"
+	  (begin-compile (cdar code))
+          "}"
+	  (if (null? (cdr code))
+	      "\n"
+	      (apply concat
+		     (map (lambda (con)
+			    (if (eq? 'else (car con))
+				(concat " else {\n"
+					(begin-compile (cdr con)) "}\n")
+				(concat "else if(" (compile (car con) #t)
+					"){\n" (begin-compile (cdr con)) 
+					"}")))
+			  (cdr code))))
+	  "\n"))
+		     
+					
 (define (compile code argp)
   (let ((obj-str (comp-var-val code argp)))
     (cond (obj-str
@@ -85,12 +105,16 @@
 	  ((binfix? code)
 	   (binfix_compile (car code) (cadr code) (caddr code) argp)
 	   )
+	  ((val-mac? code)
+	   (compile (cadr code) #t))
 	  ((jasm? code)
 	   (cadr code))
 	  ((set? code)
 	   (concat (symbol->string (cadr code)) 
 		   " = " 
 		   (compile (caddr code) #f)))
+	  ((cond? code)
+	   (cond-compile (cdr code)))
 	  ((run? code)
 	   (if (null? (cdr code))
 	       (concat (sym2str (car code)) "()" 
@@ -100,4 +124,6 @@
 	
 
 
-(print (compile '(test (add 10 30) (min 20)) #f))
+(print (compile '(cond ((a) 10 20)
+		       ((null? a) 20) 
+		       (else 100)) #f))
