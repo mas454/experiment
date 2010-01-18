@@ -1,0 +1,46 @@
+;(class Test (public) 
+ ; (def (main args) ((public static void) (array String))
+  ;     (System.out.println "Hello Java World")))
+
+(define (bool? code)
+  (or (true? code)
+      (false? code)))
+
+(define wqu "\"")
+(define str-add string-append)
+(define (argp_str argp)
+  (if argp
+      ""
+      "\n"))
+
+(define-macro (macro-var-val pred body)
+  `(define (comp-var-val code argp)
+     (cond ,@(map (lambda (pre bod)
+		   `((,pre code)
+		     (str-add ,@bod (argp_str argp)))) pred body))))
+
+(macro-var-val (string? number?  symbol? boolean?)
+	       ((wqu code wqu)
+		((number->string code))
+		((symbol->string code))
+		((if code
+		     "true"
+		     "false"))))
+
+
+(define (compile code argp)
+  (let ((obj-str (comp-var-val code argp)))
+    (if obj-str
+	obj-str)))
+	
+
+;(define (compile-string code)
+ ; (let ((str-list (string->list code)))
+  ;  (define (trans lis ret-list tranp)
+   ;   (cond ((null? lis)
+	;     (if tranp
+		; (list->string (reverse ret-list))
+		 ;code))
+	    
+      
+(print (compile '#t #f))
