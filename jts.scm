@@ -68,7 +68,7 @@
      (compile arg2 argp)))
 
 (define (jasm? exp)
-     (tagged-list? exp 'rasm))
+     (tagged-list? exp 'jasm))
 (define (set? exp)
   (tagged-list? exp '=))
 (define sym2str symbol->string)
@@ -115,7 +115,8 @@
   (if (null? (cdr code))
       (eval code (interaction-environment))
       (eval (macro-args-compile code) (interaction-environment))))
-
+(define (begin? code)
+  (tagged-list? code 'begin))
 (define (compile code argp)
   (let ((obj-str (comp-var-val code argp)))
     (cond (obj-str
@@ -136,6 +137,8 @@
 	     (compile run-code argp)))
 	  ((val-mac? code)
 	   (compile (cadr code) #t))
+	  ((begin? code)
+	   (begin-compile (cdr code)))
 	  ((jasm? code)
 	   (cadr code))
 	  ((set? code)
@@ -155,7 +158,25 @@
 (define macro-test '((macro (add x)
 		       `(= ,x (+ ,x 1)))
 		     (add b)))
-(print (begin-compile macro-test))
-;(print (compile '(cond ((a) 10 20)
-	;	       ((null? a) 20) 
-		;       (else 100)) #f))
+
+(define (s-read file-name)
+  (with-input-from-file file-name
+    (lambda ()
+      (let loop ((ls1 '()) (s (read)))
+	(if (eof-object? s)
+	    (reverse ls1)
+	    (loop (cons s ls1) (read)))))))
+
+(define out-p '())
+(define (program-print program-list out)
+  (map (lambda (code)
+	 (display 
+	  (compile code #f) out)) program-list))
+
+(define (main args)
+  (let ((program-list (s-read (cadr args))))
+    (if (null? (cddr args))
+	(set! out-p (open-output-file "out"))
+	(set! out-p (open-output-file (caddr args))))
+    (program-print program-list out-p)))
+  
