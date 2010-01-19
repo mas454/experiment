@@ -5,6 +5,17 @@
 	 (apply concat 
 		(map (lambda (a)
 		       (compile a #f)) code-list)))
+
+(define macro-list '())
+
+(define (define-macro? exp)
+  (tagged-list? exp 'macro))
+
+(define (macro? exp)
+     (if (pair? exp) 
+	 (memq (car exp) macro-list)
+       #f))
+
 (define (bool? code)
   (or (true? code)
       (false? code)))
@@ -74,7 +85,8 @@
 
 (define (val-mac? code)
   (tagged-list? code 'val-mac))
-
+(define (def-macro-compile macode)
+  (eval (cons 'define macode) (interaction-environment)))
 (define (cond? code)
   (tagged-list? code 'cond))
 (define (cond-compile code)
@@ -93,8 +105,17 @@
 					"}")))
 			  (cdr code))))
 	  "\n"))
-		     
-					
+(define (macro-args-compile code)
+  (let args2quote ((lis (cdr code)) (ret '()))
+    (if (null? lis)
+	(cons (car code) (reverse ret))
+	(args2quote (cdr lis) (cons (list 'quote (car lis))
+				    ret)))))
+(define (macro-compile code)
+  (if (null? (cdr code))
+      (eval code (interaction-environment))
+      (eval (macro-args-compile code) (interaction-environment))))
+
 (define (compile code argp)
   (let ((obj-str (comp-var-val code argp)))
     (cond (obj-str
@@ -105,6 +126,14 @@
 	  ((binfix? code)
 	   (binfix_compile (car code) (cadr code) (caddr code) argp)
 	   )
+	  ((define-macro? code)
+	   (set! macro-list (cons (caadr code) macro-list))
+	   (def-macro-compile (cdr code))
+	   ""
+	  )
+	  ((macro? code)
+	   (let ((run-code (macro-compile code)))
+	     (compile run-code argp)))
 	  ((val-mac? code)
 	   (compile (cadr code) #t))
 	  ((jasm? code)
@@ -123,7 +152,10 @@
 	  )))
 	
 
-
-(print (compile '(cond ((a) 10 20)
-		       ((null? a) 20) 
-		       (else 100)) #f))
+(define macro-test '((macro (add x)
+		       `(= ,x (+ ,x 1)))
+		     (add b)))
+(print (begin-compile macro-test))
+;(print (compile '(cond ((a) 10 20)
+	;	       ((null? a) 20) 
+		;       (else 100)) #f))
