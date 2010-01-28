@@ -1,5 +1,5 @@
 ;(class Test (public) 
- ; (def (main args) ((public static void) (array String))
+ ; (def (main args) ((public static void) |String[]|)
   ;     (System.out.println "Hello Java World")))
 (define (begin-compile code-list)
 	 (apply concat 
@@ -172,7 +172,38 @@
   (map (lambda (code)
 	 (display 
 	  (compile code #f) out)) program-list))
-
+(compile '(macro (class name sh-lis . body)
+	   `(begin
+	      (jasm ,(apply concat 
+			    (map (lambda (arg)
+				   (concat (sym2str arg) " ")) sh-lis)))
+	      (jasm "class ")
+	      (val-mac ,name)
+	      (jasm "{\n")
+	      ,@body
+	      (jasm "}\n"))) #t)
+(compile '(macro (def name-args kata . body)
+	    `(begin
+	       (jasm ,(apply concat
+			     (map (lambda (arg)
+				    (concat (sym2str arg) " ")) (car kata))))
+	       (val-mac ,(car name-args))
+	       (jasm "(")
+	       (jasm ,(if (null? (cdr kata))
+			  ""
+			  (concat 
+			   (sym2str (cadr kata)) " " 
+			   (sym2str (cadr name-args)))))
+	       (jasm ,(if (null? (cddr kata))
+			  ""
+			  (apply 
+			   concat
+			   (map (lambda (k arg)
+				  (concat ", " (sym2str k) " " (sym2str arg)))
+				(cddr kata) (cddr name-args)))))
+	       (jasm ") {\n")
+	       ,@body
+	       (jasm "}\n"))) #f)
 (define (main args)
   (let ((program-list (s-read (cadr args))))
     (if (null? (cddr args))
