@@ -1,3 +1,6 @@
+(define-module jts
+  (export tmacro map-quote concat sym2str compile))
+(select-module jts)
 ;(class Test (public) 
  ; (def (main args) ((public static void) |String[]|)
   ;     (System.out.println "Hello Java World")))
@@ -85,6 +88,7 @@
 
 (define (val-mac? code)
   (tagged-list? code 'val-mac))
+
 (define (def-macro-compile macode)
   (eval (cons 'define macode) (interaction-environment)))
 (define (cond? code)
@@ -112,9 +116,11 @@
 	(args2quote (cdr lis) (cons (list 'quote (car lis))
 				    ret)))))
 (define (macro-compile code)
+;  (eval code (interaction-environment)))
   (if (null? (cdr code))
       (eval code (interaction-environment))
       (eval (macro-args-compile code) (interaction-environment))))
+
 (define (begin? code)
   (tagged-list? code 'begin))
 (define (compile code argp)
@@ -134,6 +140,7 @@
 	  )
 	  ((macro? code)
 	   (let ((run-code (macro-compile code)))
+	      ;run-code))
 	     (compile run-code argp)))
 	  ((val-mac? code)
 	   (compile (cadr code) #t))
@@ -182,6 +189,7 @@
 	      (jasm "{\n")
 	      ,@body
 	      (jasm "}\n"))) #t)
+
 (compile '(macro (def name-args kata . body)
 	    `(begin
 	       (jasm ,(apply concat
@@ -211,3 +219,28 @@
 	(set! out-p (open-output-file (caddr args))))
     (program-print program-list out-p)))
   
+(define-macro (tmacro name args . body)
+  (set! macro-list (cons name macro-list))
+  (let ((mac-name (gensym)))
+    `(begin
+       (define ,mac-name (lambda ,args ,@body))
+       (define-macro (,name ,@args)
+	 ,(list 'quasiquote
+		(list 'compile (cons mac-name (dot-list->list args '())) #f))))))
+
+(define (map-quote lis)
+    (map (lambda (val)
+	   `(quote ,val)) lis))
+
+(define (dot-list->list lis result)
+  (cond ((null? lis)
+	 (reverse result))
+	((not (pair? lis))
+	 (reverse (cons (list 'unquote-splicing (list 'map-quote lis)) result)))
+	(else
+	 (dot-list->list (cdr lis) 
+			 (cons (list 'quote (list 'unquote (car lis))) result)))))
+	 
+	 
+
+(provide "./jts")
