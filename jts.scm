@@ -1,6 +1,6 @@
-(define-module jts
-  (export tmacro map-quote concat sym2str compile))
-(select-module jts)
+;(define-module jts
+ ; (export tmacro map-quote concat sym2str compile))
+;(select-module jts)
 ;(class Test (public) 
  ; (def (main args) ((public static void) |String[]|)
   ;     (System.out.println "Hello Java World")))
@@ -122,7 +122,8 @@
       (eval (macro-args-compile code) (interaction-environment))))
 
 (define (begin? code)
-  (tagged-list? code 'begin))
+  (or (tagged-list? code 'begin)
+      (tagged-list? code 'do)))
 (define (compile code argp)
   (let ((obj-str (comp-var-val code argp)))
     (cond (obj-str
@@ -151,7 +152,7 @@
 	  ((set? code)
 	   (concat (symbol->string (cadr code)) 
 		   " = " 
-		   (compile (caddr code) #f)))
+		   (compile (caddr code) #t) (argp_str argp)))
 	  ((cond? code)
 	   (cond-compile (cdr code)))
 	  ((run? code)
@@ -179,13 +180,19 @@
   (map (lambda (code)
 	 (display 
 	  (compile code #f) out)) program-list))
-(compile '(macro (class name sh-lis . body)
+(define (map-sym-concat lis)
+  (apply concat 
+	 (map (lambda (arg)
+		(concat (sym2str arg) " ")) lis)))
+(compile '(macro (class name sh-lis  extend . body)
 	   `(begin
 	      (jasm ,(apply concat 
 			    (map (lambda (arg)
 				   (concat (sym2str arg) " ")) sh-lis)))
 	      (jasm "class ")
 	      (val-mac ,name)
+	      (jasm " extend ")
+	      (jasm ,(map-sym-concat extend))
 	      (jasm "{\n")
 	      ,@body
 	      (jasm "}\n"))) #t)
@@ -197,12 +204,12 @@
 				    (concat (sym2str arg) " ")) (car kata))))
 	       (val-mac ,(car name-args))
 	       (jasm "(")
-	       (jasm ,(if (null? (cdr kata))
+	       (jasm ,(if (or (null? kata) (null? (cdr kata)))
 			  ""
 			  (concat 
 			   (sym2str (cadr kata)) " " 
 			   (sym2str (cadr name-args)))))
-	       (jasm ,(if (null? (cddr kata))
+	       (jasm ,(if (or (null? kata) (null? (cdr kata)) (null? (cddr kata)))
 			  ""
 			  (apply 
 			   concat
@@ -213,6 +220,7 @@
 	       ,@body
 	       (jasm "}\n"))) #f)
 (define (main args)
+  (print args)
   (let ((program-list (s-read (cadr args))))
     (if (null? (cddr args))
 	(set! out-p (open-output-file "out"))
@@ -243,4 +251,4 @@
 	 
 	 
 
-(provide "./jts")
+;(provide "./jts")
