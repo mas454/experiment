@@ -191,7 +191,7 @@
 				   (concat (sym2str arg) " ")) sh-lis)))
 	      (jasm "class ")
 	      (val-mac ,name)
-	      (jasm " extend ")
+	      (jasm " extends ")
 	      (jasm ,(map-sym-concat extend))
 	      (jasm "{\n")
 	      ,@body
