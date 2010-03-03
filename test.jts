@@ -1,0 +1,45 @@
+(macro (def  args k-lis . body)
+  (define (s->string k-l)
+    (apply concat (map (lambda (a)
+			 (concat (symbol->string a) " ")) k-l)))
+
+  (define (args->jargs args k)
+    (concat (symbol->string (car k)) " " (symbol->string (car args))
+	    (if (null? (cdr args))
+		""
+		(apply 
+		 concat
+		 (map (lambda (a k)
+			(concat ", "
+				(symbol->string a)
+				" "
+				(symbol->string k))) (cdr args) (cdr k))))))
+  `(begin 
+     (jasm ,(s->string (car k-lis)))
+     (jasm ,(symbol->string (car args)))
+     (jasm "(")
+     (jasm ,(if (null? args)
+		""
+		(args->jargs (cdr args) (cdr k-lis))))
+     (jasm "){\n")
+     ,@body
+     (jasm "}\n")))
+(macro (class k-lis name . body)
+  `(begin (jasm ,(apply concat (map symbol->string k-lis)))
+	  (jasm " class ")
+	  (jasm ,(symbol->string name))
+	  (jasm " {\n")
+	  ,@body
+	  (jasm "}\n")))
+(macro (def_main arg-sym . body)
+  `(def (main ,arg-sym) ((public static void) |String[]|)
+	,@body))
+;(class (public) Test 
+ ;      (def (main args) ((public static void) |String[]|)
+	;    (System.out.println "Hello Java World")))
+
+(class (public) Test 
+      (def_main args
+	(System.out.println "Hello Java World")))
+(macro (import . body)
+       

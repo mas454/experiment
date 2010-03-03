@@ -1,0 +1,157 @@
+
+(macro (def_main . body)
+  `(def (main args) ((public static void) |String[]|)
+	,@body))
+(macro (import . implist)
+       `(do 
+	 ,@(map (lambda (a)
+		 `(do
+		   (jasm "import ")
+		   ,a))  implist)))
+		 
+;(class Test (public) 
+ ;(def (main args) ((public static void) |String[]|)
+  ;    (System.out.println "Hello Java World")))
+
+(macro (set kata val)
+       `(do
+	 (jasm ,(map-sym-concat kata))
+	 (jasm " = ")
+	 ,val))
+(macro (new cl . args)
+       `(do
+	 (jasm "new ")
+	 (val-mac ,(cons cl args))))
+(macro (mcall meth var . args)
+       (let ((sym (string->symbol 
+		   (concat (sym2str var) "." (sym2str meth)))))
+	 `(,sym ,@args)))
+
+(macro (var-map var . meths)
+       `(do
+	 ,@(map (lambda (args)
+		  `(mcall ,(car args)
+			  ,var ,@(cdr args))) meths)))
+;(macro (def-var kata-lis var)
+ ;      `(do
+	; (jasm ,(map-sym-concat kata-lis))
+	 ;(jasm " ")
+	 ;,var))
+(macro (def-var . def-lis)
+	 `(jasm ,(concat (map-sym-concat def-lis) ";\n")))
+(macro (def-pri-vars . var-list)
+       `(do 
+	 ,@(map (lambda (args)
+		  (print args)
+		  `(def-var private ,@args)) var-list)))
+(macro (sets . lis)
+  (let loop ((lis lis) (result '()))
+    (if (null? lis)
+	(cons 'do (reverse result))
+	(loop (cddr lis) (cons (list '= (car lis) (cadr lis)) result)))))
+(macro (itimes max . body)
+  `(do (jasm "for(int i = 0; i < ")
+       (val-mac ,max)
+       (jasm "; i++) {\n")
+       ,@body
+       (jasm "}\n")))
+(macro (if test . t)
+  (if (null? (cdr t))
+      `(cond (,test ,(car t)))
+      `(cond (,test ,(car t))
+	     (else ,(cadr t)))))
+;(class Test (public) (JFrame)
+ ;      (def_main
+	; (System.out.println "Hello, world")))
+(macro (when test . body)
+  `(if ,test
+       (do
+	   ,@body)))
+
+
+(macro (hoge-map fns b)
+  `(do ,@(map (lambda (fn)
+		`(,fn ,b)) fns)))
+(macro (add-layout content north center south)
+  `(var-map ,content
+	    (add ,north BorderLayout.NORTH)
+	    (add ,center BorderLayout.CENTER)
+	    (add ,south BorderLayout.SOUTH)))
+
+(import java.awt.* java.awt.event.* 
+	java.util.* javax.swing.* javax.swing.border.*)
+
+(class SlotMachine (public) (JFrame implements ActionListener)
+       (def_main
+	 (set (JFrame frame) (new SlotMachine)) (jasm ";\n")
+	 (var-map frame 
+		  (setBounds 0 0 640 480)
+		  (setVisible true)
+		  (setDefaultCloseOperation JFrame.EXIT_ON_CLOSE)))
+
+       (def-pri-vars 
+	 (Random random) (javax.swing.Timer timer) 
+	 (JPanel |labelPanel,buttonPanel|)
+	 (|boolean[]| isStopLabels) (|JLabel[]| labels) 
+	 (|JButton[]| buttons) (JButton startButton))
+
+       (def (actionPerformed e) ((public void) ActionEvent)
+	    (cond ((== (e.getSource) timer) (actionTimer e))
+		  ((== (e.getSource) startButton) (actionStartButton e))
+		  (else (actionButton e))))
+
+       (def (actionTimer e) ((private void) ActionEvent)
+	    (itimes labels.length
+		       (if |isStopLabels[i]| continue)
+		       (|labels[i].setText| (+ "" (random.nextInt 10)))))
+
+       (def (actionStartButton e) ((private void) ActionEvent)
+	    (itimes isStopLabels.length (= |isStopLabels[i]| false))
+	    (itimes buttons.length (|buttons[i].setEnabled| true))
+	    
+	    (= random (new Random (System.currentTimeMillis)))
+	    (timer.start)
+	    (startButton.setEnabled false))
+
+       (def (actionButton e) ((private void) ActionEvent)
+	    (itimes buttons.length
+		       (if (== (e.getSource) |buttons[i]|)
+			    (do (|buttons[i].setEnabled| false)
+			     (= |isStopLabels[i]| true))))
+	    (set (boolean isAllStop) true)
+	    (itimes isStopLabels.length
+		       (when (== |isStopLabels[i]| false) (= isAllStop false) break))
+	    (when isAllStop (timer.stop) (startButton.setEnabled true)))
+
+       (def (SlotMachine) ((public))
+	    (super "スロットマシーン")
+	    (sets labelPanel (new JPanel) buttonPanel (new JPanel) 
+		  startButton (new JButton "スタート"))
+
+	    (hoge-map (labelPanel.setLayout buttonPanel.setLayout) (new GridLayout 1 3))
+	    (startButton.addActionListener this)
+
+	    (jasm "isStopLabels = new boolean[3];\n")
+	    (jasm "labels = new JLabel[3];\n")
+	    (jasm "buttons = new JButton[3];\n")
+
+	    (itimes buttons.length
+		     (= |labels[i]| (new JLabel "0"))
+		     (var-map |labels[i]|
+			      (setFont (new Font null Font.PLAIN 40))
+			      (setBorder (new BevelBorder BevelBorder.RAISED))
+			      (setHorizontalAlignment SwingConstants.CENTER))
+		     (labelPanel.add |labels[i]|))
+
+	    (itimes buttons.length
+		     (= |buttons[i]| (new JButton (+ "停止" i)))
+		     (var-map |buttons[i]| (addActionListener this) (setEnabled false))
+		     (buttonPanel.add |buttons[i]|))
+
+	    (add-layout |getContentPane()| startButton labelPanel buttonPanel)
+	    (= timer (new javax.swing.Timer 100 this))))
+
+
+
+			      
+
